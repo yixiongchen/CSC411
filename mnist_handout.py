@@ -43,12 +43,40 @@ def forward(x, W0, b0, W1, b1):
 def NLL(y, y_):
     return -sum(y_*log(y)) 
 
+
 def deriv_multilayer(W0, b0, W1, b1, x, L0, L1, y, y_):
     '''Incomplete function for computing the gradient of the cross-entropy
     cost function w.r.t the parameters of a neural network'''
     dCdL1 =  y - y_
     dCdW1 =  dot(L0, dCdL1.T ) 
+ 
+ 
+def grad_descent(df, x, y, init_w, b, alpha):
+    EPS = 1e-15   #EPS = 10**(-5)
+    max_iter = 5000
+    iter  = 0
+    t = vstack((b, init_w)); 
+    prev_t = t-10*EPS;
+    while norm(t - prev_t) >  EPS and iter < max_iter:
+        if(iter % 500 == 0):
+            print(t);
+        prev_t = t.copy()
+        t -= alpha*df(x, y, t).T
+        iter += 1
+    return t  
+ 
+#vectorized gradient function
+def df(x, y, w):
+    #get softmax
+    p = compute_network(x, w);
+    d = dot((p - y), x.T);
+    return d;
     
+    
+def f(y, x, w):
+    p1 = compute_network(x, w);
+    return -sum(y*log(p1)) 
+         
 
 #Load sample weights for the multilayer neural network
 snapshot = pickle.load(open("snapshot50.pkl", "rb"), encoding="latin1");
@@ -73,33 +101,34 @@ y = argmax(output)
 #show()
 ################################################################################
 
-"""
-PART 1
-Describe the dataset of digits. In your report, include 10 images of each of the digits.
-"""
-
-image_list = ["train0","train1", "train2", "train3", "train4", "train5", "train6", "train7", "train8", "train9"]
-f,ax = plt.subplots(10,10)
-for j in range(10):
-    for i in range(10):
-        ax[j][i].imshow(M[image_list[j]][i].reshape((28,28)), cmap=cm.gray)
-plt.show() 
+# """
+# PART 1
+# Describe the dataset of digits. In your report, include 10 images of each of the digits.
+# """
+# 
+# image_list = ["train0","train1", "train2", "train3", "train4", "train5", "train6", "train7", "train8", "train9"]
+# f,ax = plt.subplots(10,10)
+# for j in range(10):
+#     for i in range(10):
+#         ax[j][i].imshow(M[image_list[j]][i].reshape((28,28)), cmap=cm.gray)
+# plt.show() 
 
 
 """
 PART 2
 Implement a function that computes the network below.
 
-#x is the matrix 784x1; w is the matrix 784x9;, b is the
-#matrix 9x1 
+#x is the matrix 784x1; w is the matrix 784x10;, b is the
+#matrix 10x1 
 """
-def compute_network(x, w, b):
+def compute_network(x, w):
     #linear combination
-    y = dot(w.T, x) + b;
+    y = dot(w.T, x);
     #softmax
     output=exp(y)/tile(sum(exp(y),0), (len(y),1))
     return output;
-    
+
+   
 
 """
 PART 3
@@ -108,13 +137,85 @@ PART 3
 ###part(b)
 #Write vectorized code that computes the gradient with respect to #the cost function. Check that the gradient was computed correctly #by approximating the gradient at several coordinates using finite #differences. Include the code for computing the gradient in #vectorized form in your report.
 
-def df(x, y, w, b):
-    #get softmax
-    p = computer_network(x, w, b);
-    d = dot((p - y), x.T);
-    return d;
+
     
 #test difference
+part3_x = array([[1,1,2,3,4]]).T
+part3_w =array([[.1,.1,.1,.1,.1],[.1,.1,.1,.1,.1], [.1,.1,.1,.1,.1]])
+part3_y = array([[1], [0], [0]])
+
+h = [0.0000001, 0.0000002, 0.0000003, 0.0000004]
+for index in h:
+    w1 = array([[.1+index,.1,.1,.1,.1],[.1,.1,.1,.1,.1], [.1,.1,.1,.1,.1]])
+    finite = (f(part3_y, part3_x, w1.T) - f(part3_y, part3_x, part3_w.T)) / index; 
+    gradient = df(part3_x, part3_y, part3_w.T)
+    difference = abs(finite - gradient[0][0]);
+    print("difference between gradient function and finite difference is", difference);
+
+
+"""
+Part 4
+Train the neural network you constructed. Plot the learning curves. Display the weights going into each of the output units. Describe the details of your optimization procedure.
+
+"""
+
+#read all train example;
+train_list = ["train0","train1", "train2", "train3", "train4", "train5", "train6", "train7", "train8", "train9"]
+
+test_list =  ["test0","test1", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9"]
+
+number_length = [];
+part4_x = M[train_list[0]];
+
+part4_y1 = array([[1] + [0] * 9]);
+part4_y2 = array([[0] * 1 + [1] + [0] * 8]);
+part4_y3 = array([[0] * 2 + [1] + [0] * 7]);
+part4_y4 = array([[0] * 3 + [1] + [0] * 6]);
+part4_y5 = array([[0] * 4 + [1] + [0] * 5]);
+part4_y6 = array([[0] * 5 + [1] + [0] * 4]);
+part4_y7 = array([[0] * 6 + [1] + [0] * 3]);
+part4_y8 = array([[0] * 7 + [1] + [0] * 2]);
+part4_y9 = array([[0] * 8 + [1] + [0] * 1]);
+part4_y10 = array([[0] * 9 + [1]]);
+
+part4_y = part4_y1;
+
+y_sets = [part4_y1, part4_y2, part4_y3, part4_y4, part4_y5, part4_y6, part4_y7, part4_y8, part4_y9, part4_y10]
+
+b = array([[0.]*10])
+part4_w = array([[0.]*10]*784)
+
+number_length.append(part4_x.shape[0]);
+
+for i in range(number_length[0]-1):
+    part4_y = vstack((part4_y, part4_y1))
+
+for number in range(1,len(train_list)):
+    
+    # construct x
+    part4_x =vstack((part4_x, M[train_list[number]]));
+    #construct y
+    number_length.append(M[train_list[number]].shape[0]);
+    
+    for j in range(number_length[number]):
+        part4_y = vstack((part4_y, y_sets[number]))
+
+
+part4_x= vstack((ones((1, part4_x.shape[0])), part4_x.T))
+
+#theta
+alpha = 0.0000000001;
+part4_theta = grad_descent(df, part4_x, part4_y.T, part4_w, b, alpha);
+    
+
+
+
+
+
+
+
+
+
 
 
 
