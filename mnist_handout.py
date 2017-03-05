@@ -1,6 +1,6 @@
 from pylab import *
 import numpy as np
-import matplotlib.pyplot as plt
+from matplotlib.pyplot import *
 import matplotlib.cbook as cbook
 import time
 from scipy.misc import imread
@@ -55,15 +55,19 @@ def grad_descent(df, x, y, init_w, b, alpha):
     EPS = 1e-15   #EPS = 10**(-5)
     max_iter = 5000
     iter  = 0
+    count = 0;
     t = vstack((b, init_w)); 
     prev_t = t-10*EPS;
-    while norm(t - prev_t) >  EPS and iter < max_iter:
+    while norm(t - prev_t) >  EPS and iter <= max_iter:
         if(iter % 500 == 0):
-            print(t);
+            print("iteration: ", iter);
+            filename ='theta_'+str(count)+'.txt'
+            np.savetxt(filename, t)
+            count += 1;
         prev_t = t.copy()
         t -= alpha*df(x, y, t).T
         iter += 1
-    return t  
+
  
 #vectorized gradient function
 def df(x, y, w):
@@ -77,6 +81,23 @@ def f(y, x, w):
     p1 = compute_network(x, w);
     return -sum(y*log(p1)) 
          
+#function test_performance with theta
+def test_performance(M, theta, test_list):
+    total_size = 0;
+    count = 0;
+    for index in range(0, len(test_list)):
+        for image in M[test_list[index]]:
+            total_size+=1
+            image = array([image]);
+            image = vstack((ones((1, image.shape[0])), image.T))
+            if(argmax(compute_network(image, theta)) == index):
+                count+=1;
+    performance = count /total_size;
+    print("count is ", count);
+    print("total_size is ", total_size);
+    print(performance);
+    return performance;
+
 
 #Load sample weights for the multilayer neural network
 snapshot = pickle.load(open("snapshot50.pkl", "rb"), encoding="latin1");
@@ -118,7 +139,7 @@ y = argmax(output)
 PART 2
 Implement a function that computes the network below.
 
-#x is the matrix 784x1; w is the matrix 784x10;, b is the
+#x is the matrix 785x1; w is the matrix 785x10;, b is the
 #matrix 10x1 
 """
 def compute_network(x, w):
@@ -128,7 +149,6 @@ def compute_network(x, w):
     output=exp(y)/tile(sum(exp(y),0), (len(y),1))
     return output;
 
-   
 
 """
 PART 3
@@ -151,6 +171,9 @@ for index in h:
     gradient = df(part3_x, part3_y, part3_w.T)
     difference = abs(finite - gradient[0][0]);
     print("difference between gradient function and finite difference is", difference);
+
+
+
 
 
 """
@@ -192,7 +215,7 @@ for i in range(number_length[0]-1):
 
 for number in range(1,len(train_list)):
     
-    # construct x
+    #construct x
     part4_x =vstack((part4_x, M[train_list[number]]));
     #construct y
     number_length.append(M[train_list[number]].shape[0]);
@@ -203,11 +226,70 @@ for number in range(1,len(train_list)):
 
 part4_x= vstack((ones((1, part4_x.shape[0])), part4_x.T))
 
-#theta
-alpha = 0.0000000001;
-part4_theta = grad_descent(df, part4_x, part4_y.T, part4_w, b, alpha);
+#get a list of theta
+alpha = 0.00000001;
+grad_descent(df, part4_x, part4_y.T, part4_w, b, alpha);
     
 
+
+result_for_test = [];
+result_for_training = [];
+theta_list = []
+#performance for test sets
+#performance for training sets
+for i in range(0, 11):
+    iteration = i * 500;
+    filename = "theta_"+str(i)+".txt";
+    theta = np.loadtxt(filename);
+    theta_list.append(theta);
+    print("test performance for iteration "+str(iteration)+" is");
+    print("test sets:")
+    result_for_test.append(test_performance(M,theta,test_list));
+    print("train sets:")
+    result_for_training.append(test_performance(M,theta,train_list))
+    print("\n\n\n\n\n")
+
+
+#draw learning curve
+x_aix = [0, 500, 1000, 1500, 2000, 2500, 3000, 3500, 4000, 4500, 5000];
+#graph for act
+plot(x_aix, result_for_test, "r", label = "Test set")
+plot(x_aix, result_for_training, "b", label = "Training set")
+legend(loc = 1)
+xlim([0, 6000])
+ylim([0, 1])
+show();
+
+
+#display theta
+display_theta = theta_list[len(theta_list) -1].T;
+image_title = 0;
+for image in display_theta:
+    #construct image array
+    image_title += 1;
+    image_array = [];
+    subarray = []
+    count = 0;
+    for item in range(1, 785):
+        count += 1;
+        subarray.append(image[item]);
+        if(count == 28):
+            image_array.append(subarray);
+            count = 0;
+            subarray=[];
+    part4_image = array(image_array);
+    imsave("part4_"+ str(image_title)+".jpg", part4_image);
+        
+
+
+
+
+    
+
+    
+        
+        
+    
 
 
 
